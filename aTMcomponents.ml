@@ -15,61 +15,75 @@ type action =
 (*....................................................................
   Initializing database of accounts
 *)
-
 (* A specification of a customer name and initial balance for
    initializing the account database *)
 type account_spec = {name : string; id : id; balance : int} ;;
 
-(* initialize accts -- Establishes a database of accounts, each with a
-   name, aribtrary id, and balance. The names and balances are
-   initialized as per the `accts` provided. *)
-val initialize : account_spec list -> unit ;;
 
-(*....................................................................
-  Acquiring information from the customer
-*)
+class atm (accounts : account_spec list) =
+  object(this)
 
-(* acquire_id () -- Requests from the ATM customer and returns an id
-   (akin to entering one's ATM card), by prompting for an id number
-   and reading an id from stdin. *)
-val acquire_id : unit -> id ;;
+  val mutable db = []
+  
+  (* initialize accts -- Establishes a database of accounts, each with a
+     name, aribtrary id, and balance. The names and balances are
+     initialized as per the `accts` provided. *)
 
-(* acquire_amount () -- Requests from the ATM customer and returns an
-   amount by prompting for an amount and reading an int from stdin. *)
-val acquire_amount : unit -> int ;;
+  method initialize (lst : account_spec list) : unit =
+    db <- lst
 
-(* acquire_act () -- Requests from the user and returns an action to
-   be performed, as a value of type action *)
-val acquire_act : unit -> action ;;
+  (*....................................................................
+    Acquiring information from the customer
+  *)
 
-(*....................................................................
-  Querying and updating the account database
+  (* acquire_id () -- Requests from the ATM customer and returns an id
+     (akin to entering one's ATM card), by prompting for an id number
+     and reading an id from stdin. *)
+  method acquire_id :id =
+    failwith "TODO" ;;
 
-  These functions all raise Not_found if there is no account with the
-  given id.
-*)
+  (* acquire_amount () -- Requests from the ATM customer and returns an
+     amount by prompting for an amount and reading an int from stdin. *)
+  method acquire_amount : int =
+    failwith "TODO";;
 
-(* get_balance id -- Returns the balance for the customer account with
-   the given id. *)
-val get_balance : id -> int ;;
+  (* acquire_act () -- Requests from the user and returns an action to
+     be performed, as a value of type action *)
+  method acquire_act : action =
+    failwith "TODO";;
 
-(* get_name id -- Returns the name associated with the customer
-   account with the given id. *)
-val get_name : id -> string ;;
+  (*....................................................................
+    Querying and updating the account database
 
-(* update_balance id amount -- Modifies the balance of the customer
-   account with the given id,setting it to the given amount. *)
-val update_balance : id -> int -> unit ;;
+    These functions all raise Not_found if there is no account with the
+    given id.
+  *)
 
-(*....................................................................
-  Presenting information and cash to the customer
-*)
+  (* get_balance id -- Returns the balance for the customer account with
+     the given id. *)
+  method get_balance : int =
+    failwith "TODO";;
 
-(* present_message message -- Presents to the customer (on stdout) the
-   given message followed by a newline. *)
-val present_message : string -> unit ;;
+  (* get_name id -- Returns the name associated with the customer
+     account with the given id. *)
+  method get_name : string =
+    failwith "TODO";;
 
-(* deliver_cash amount -- Dispenses the given amount of cash to the
-   customer (really just prints to stdout a message to that
-   effect). *)
-val deliver_cash : int -> unit ;;
+  (* update_balance id amount -- Modifies the balance of the customer
+     account with the given id,setting it to the given amount. *)
+  method update_balance : id -> int -> unit  =
+  ;;
+
+  (*....................................................................
+    Presenting information and cash to the customer
+  *)
+
+  (* present_message message -- Presents to the customer (on stdout) the
+     given message followed by a newline. *)
+  method present_message : string -> unit ;;
+
+  (* deliver_cash amount -- Dispenses the given amount of cash to the
+     customer (really just prints to stdout a message to that
+     effect). *)
+  method deliver_cash : int -> unit ;;
+end
