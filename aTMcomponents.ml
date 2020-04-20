@@ -1,7 +1,43 @@
+(*
+                Component Behaviors of an ATM Machine
+ *)
+(*
+                       REMARKS ON THE SOLUTION
 
+This implementation of the `ATMcomponents` interface itself splits off
+all dealings with the database of accounts by referencing a separate
+`Database` module. That module's interface can be found in
+`database.mli`, and provides lower-level manipulations of the database
+independent of any particular concrete OCaml data structure
+implementing the database. To demonstrate the
+implementation-independence made possible by the abstraction barrier
+from the module's signature, we provide three different
+implementations of the database module in `database.ml`,
+`database2.ml`, and `database3.ml`. (See those files for further
+information.)
+
+Because the signature for `ATMcomponents` returns a unit for many
+functions that implicitly modify the database (`initialize` and
+`update` in particular), the implementation of the database from
+within `ATMcomponents` must allow for modification by side effect. A
+purely functional implementation is not possible. We pass that
+requirement on to the `Database` module as well. Its interface also is
+imperative rather than functional. An alternative would be to have a
+functional database module and do all of the storing and side effects
+within `ATMcomponents`.
+
+Another reasonable alternative design would be to encapsulate all of
+the database manipulation within one or more classes, for instance, an
+`account` class or a `database` class or both. *)
+
+open Printf ;;
+open Scanf ;;
+  
+(* Make use of an account database *)
+module DB = Database3 ;; 
 
 (* Customer account identifiers *)
-type id = int
+type id = int ;;
 
 (* Possible actions that an ATM customer can perform *)
 type action =
@@ -10,101 +46,69 @@ type action =
   | Deposit of int    (* deposit an amount *)
   | Next              (* finish this customer and move on to the next one *)
   | Finished          (* shut down the ATM and exit entirely *)
-;;
+;; 
 
-(*....................................................................
-  Initializing database of accounts
-*)
-(* A specification of a customer name and initial balance for
-   initializing the account database *)
+(* A specification of a customer name and initial balance *)
 type account_spec = {name : string; id : id; balance : int} ;;
 
+(*....................................................................
+  ATM component behaviors. See .mli file for further documentation.
+ *)
 
-class atm (accounts : account_spec list) =
-  object(this)
+let initialize (initial : account_spec list) : unit =
+  initial
+  |> List.iter (fun {name; id; balance}
+                -> DB.create id name;
+                   DB.update id balance) ;;
 
-  val mutable db = []
+let rec acquire_id () : id =
+  printf "Enter customer id: "; 
+  try
+    let id = read_int () in
+    ignore (DB.exists id); id
+  with
+  | Not_found 
+  | Failure _ -> printf "Invalid id \n";
+                 acquire_id () ;;
+                  
+let rec acquire_amount () : int =
+  printf "Enter amount: ";
+  try
+    let amount = read_int () in
+    if amount <= 0 then raise (Failure "amount is non-positive");
+    amount
+  with
+  | Failure _ -> printf "Invalid amount \n";
+                 acquire_amount () ;;
+  
+let rec acquire_act () : action =
+  printf "Enter action: (B) Balance (-) Withdraw (+) Deposit \
+          (=) Done (X) Exit: %!";
+  scanf " %c"
+        (fun char -> match char with
+                     | 'b' | 'B'        -> Balance
+                     | '/' | 'x' | 'X'  -> Finished
+                     | '='              -> Next
+                     | 'w' | 'W' | '-'  -> Withdraw (acquire_amount ())
+                     | 'd' | 'D' | '+'  -> Deposit (acquire_amount ())
+                     | _                -> printf "  invalid choice\n";
+                                           acquire_act () ) ;;
 
-  (* initialize accts -- Establishes a database of accounts, each with a
-     name, aribtrary id, and balance. The names and balances are
-     initialized as per the `accts` provided. *)
+let get_balance : id -> int = DB.balance ;;
 
-  method initialize (lst : account_spec list) : unit =
-    db <- lst
+let get_name : id -> string = DB.name ;;
 
-  (*....................................................................
-    Acquiring information from the customer
-  *)
+let update_balance : id -> int -> unit = DB.update ;;
 
-  (* acquire_id () -- Requests from the ATM customer and returns an id
-     (akin to entering one's ATM card), by prompting for an id number
-     and reading an id from stdin. *)
-  method acquire_id :id =
-    failwith "TODO" ;;
+let present_message (msg : string) : unit = 
+  printf "%s\n%!" msg ;;
+  
+let deliver_cash (amount : int) : unit =
+  printf "Here's your cash: ";
+  (* dispense some "20's" *)
+  for _i = 1 to (amount / 20) do
+    printf "[20 @ 20]"
+  done;
+  (* dispense the rest of the cash *)
+  printf " and %d more\n" (amount mod 20) ;;
 
-  (* acquire_amount () -- Requests from the ATM customer and returns an
-     amount by prompting for an amount and reading an int from stdin. *)
-  method acquire_amount : int =
-    failwith "TODO";;
-
-  (* acquire_act () -- Requests from the user and returns an action to
-     be performed, as a value of type action *)
-  method acquire_act : action =
-    failwith "TODO";;
-
-  (*....................................................................
-    Querying and updating the account database
-
-    These functions all raise Not_found if there is no account with the
-    given id.
-  *)
-
-  (* get_balance id -- Returns the balance for the customer account with
-     the given id. *)
-  method get_balance (n : id) : int =
-    let iter num lst : int =
-      match lst with
-      | [] -> exception "Not_found"
-      | hd :: tl -> if hd.id = num then hd.balance
-                    else iter num tl in
-    iter n db ;;
-
-  (* get_name id -- Returns the name associated with the customer
-     account with the given id. *)
-  method get_name (n : id) : string =
-    let iter num lst : int =
-      match lst with
-      | [] -> exception "Not_found"
-      | hd :: tl -> if hd.id = num then hd.name
-                    else iter num tl in
-    iter n db ;;
-
-  (* update_balance id amount -- Modifies the balance of the customer
-     account with the given id,setting it to the given amount. *)
-  method update_balance (n : id) (new_bal : int): unit  =
-    let iter id_val num lst : int =
-      match lst with
-      | [] -> exception "Not_found"
-      | hd :: tl -> if hd.id = id_val then hd.bal <- num
-                    else iter num tl in
-    iter n new_bal db ;;
-
-  (*....................................................................
-    Presenting information and cash to the customer
-  *)
-
-  (* present_message message -- Presents to the customer (on stdout) the
-     given message followed by a newline. *)
-  method present_message (s: string) = 
-    print_endline s   ;;
-
-  (* deliver_cash amount -- Dispenses the given amount of cash to the 
-  customer (really just prints to stdout a message to that 
-  effect). *) 
-
-  method deliver_cash (n : int) = 
-    while n >= 20 do 
-      Printf.printf "[20 @ 20]"; 
-      n = n - 20 
-    done 
-    print_endline (sprintf " and %d more" n) ;;
